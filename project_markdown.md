@@ -1,11 +1,9 @@
----
-title: "Class Project"
-author: "Owen Jetton"
-date: "2/20/2021"
-output: github_document
----
+Class Project
+================
+Owen Jetton
+2/20/2021
 
-```{r setup}
+``` r
 knitr::opts_chunk$set(echo = TRUE)
  
 library(pacman)
@@ -44,14 +42,16 @@ ggplot(data_full, aes(x = log(generation_k_wh), y = log(tons_of_co2_emissions)))
   labs(x = "Generation (KWH)", y = "Tons of CO2 Emissions",
        title = "Power Generated Against CO2 Emissions by Fuel Group (Logged Values)",
       color = "Fuel Group")
+```
 
+![](project_markdown_files/figure-gfm/setup-1.png)<!-- -->
 
+``` r
 ggplot(data_full, aes(x = aggregated_fuel_group, fill = aggregated_fuel_group)) + 
   geom_bar(stat = "count") +
   xlab("Fuel Group") + ylab("Frequency") +
   theme_bw(base_size = 15) +
   theme(legend.position = "none")
-
 ```
 
-
+![](project_markdown_files/figure-gfm/setup-2.png)<!-- -->
