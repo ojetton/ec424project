@@ -9,8 +9,9 @@ knitr::opts_chunk$set(echo = TRUE)
 library(pacman)
 
 p_load(readr, dplyr, ggplot2, readxl, magrittr, janitor)
+```
 
-
+``` r
 # Read data on cooling systems
 cool_data = read_xlsx("C:/Users/ojett/Downloads/cooling_summary_2019.xlsx")
 
@@ -35,7 +36,9 @@ data_full %<>% clean_names() %>%
   select(-c(utility_id, eia_balancing_authority_region, balancing_authority_code,
             balancing_authority_name, nerc_region, fuel_units)) %>%
   distinct()
+```
 
+``` r
 # Graphs Checking out the data
 ggplot(data_full, aes(x = log(generation_k_wh), y = log(tons_of_co2_emissions))) +
   geom_point(aes(color = aggregated_fuel_group)) +
@@ -44,7 +47,7 @@ ggplot(data_full, aes(x = log(generation_k_wh), y = log(tons_of_co2_emissions)))
       color = "Fuel Group")
 ```
 
-![](project_markdown_files/figure-gfm/setup-1.png)<!-- -->
+![](project_markdown_files/figure-gfm/Initial%20Graphs-1.png)<!-- -->
 
 ``` r
 ggplot(data_full, aes(x = aggregated_fuel_group, fill = aggregated_fuel_group)) + 
@@ -54,4 +57,4 @@ ggplot(data_full, aes(x = aggregated_fuel_group, fill = aggregated_fuel_group)) 
   theme(legend.position = "none")
 ```
 
-![](project_markdown_files/figure-gfm/setup-2.png)<!-- -->
+![](project_markdown_files/figure-gfm/Initial%20Graphs-2.png)<!-- -->
