@@ -5,45 +5,115 @@ date: "2/20/2021"
 output: github_document
 ---
 
+# Data
+
 ```{r setup}
 knitr::opts_chunk$set(echo = TRUE)
  
+# Download and load packages
 library(pacman)
 
-p_load(readr, dplyr, ggplot2, readxl, magrittr, janitor)
+p_load(readr, dplyr, ggplot2, readxl, magrittr, janitor, utils, tidyverse, tidymodels,
+       tune, glmnet, recipes)
 ```
 
-```{r read data}
-# CO2 data from 2016 - 19
+```{r reading data}
+# Read CO2 data from 2016 - 19
 co2_data_2016 = read_xlsx("C:/Users/ojett/Documents/EC424/ec424project/emissions2016.xlsx",
-                     sheet = 1)
+                     sheet = 1) %>% mutate(year = 2016)
+                        # add year variable which will be helpful for merging data later
 
 co2_data_2017 = read_xlsx("C:/Users/ojett/Documents/EC424/ec424project/emissions2017.xlsx",
-                     sheet = 1)
+                     sheet = 1) %>% mutate(year = 2017)
 
 co2_data_2018 = read_xlsx("C:/Users/ojett/Documents/EC424/ec424project/emissions2018.xlsx",
-                     sheet = 1)
+                     sheet = 1) %>% mutate(year = 2018)
 
 co2_data_2019 = read_xlsx("C:/Users/ojett/Documents/EC424/ec424project/emissions2019.xlsx",
-                     sheet = 1)
+                     sheet = 1) %>% mutate(year = 2019)
 
-# Merging to get our final data set
+
+# Upload heating and cooling days data
+heat_cool_df = read.delim("https://www.ncei.noaa.gov/pub/orders/CDODiv6010178275591.txt",
+                          sep = ",") 
+
+
+```
+
+# Cleaning
+
+```{r Cleaning Data}
+
+# Merging CO2 to get larger data set
 data_full = do.call("rbind", list(co2_data_2016, co2_data_2017,
                                   co2_data_2018, co2_data_2019))
 
-  # Cleaning the full data set
+
+# Cleaning the full CO2 data
 data_full %<>% clean_names() %>%
+  
+    # only care about power plants that generate electricity
   filter(generation_k_wh > 0) %>% 
+  
+    # remove irrelevent or repretitive variables
   select(-c(eia_balancing_authority_region, balancing_authority_name, nerc_region, 
-            fuel_units, metric_tonnes_of_co2_emissions, fuel_code,
-            plant_name)) %>%
-  mutate(sector_code = factor(sector_code))
+            fuel_units, metric_tonnes_of_co2_emissions, plant_name))
+
+
+
+# Cleaning the Heating and Cooling days data
+heat_cool_df %<>% clean_names() %>% 
+    # select relevant variables
+  select(state_code, year_month, cdd, hdd) %>%
+  
+    # make year variable from year_month variable
+  mutate(year = strtrim(year_month,4)) %>%
+    
+    # grouping by months, and taking the sum to get the total number
+      # of heating and cooling days in a year
+  group_by(state_code, year) %>%
+  mutate(cooling_days = sum(cdd),
+         heating_days = sum(hdd),
+         state_code = factor(state_code)) %>%
+  
+    # selecting relevant 
+  select(state_code, year, cooling_days, heating_days) %>%
+  distinct()
+
+# Need the state names to correspond with the right regions:
+  # read dataset that has state names for corresponding regions
+  states_region = read_xlsx("C:/Users/ojett/Documents/EC424/ec424project/region_to_state.xlsx")
+  
+  # add state names to respective region in 
+heat_cool_df = merge(heat_cool_df, states_region, by = "state_code")
+
+
+# Add heating and cooling data to main dataframe
+
+data_full = merge(data_full, heat_cool_df, by = c("state", "year"))
+
+
+# Renaming CO2 emissions variable to "emissions"
+  # I'm doing this because it is an important variable and will need to be written a lot
+data_full %<>% rename(emissions = tons_of_co2_emissions) %>%
+  
+  # If there is no balancing authority
+  mutate(balancing_authority_code = if_else(is.na(balancing_authority_code), "NONE",
+                                            balancing_authority_code)) %>%
+  
+  # Also turn certain numerical variables into factors
+  mutate_at(.vars = vars("sector_code", "balancing_authority_code", "state_code"),
+            .funs = factor) 
+
+
+
 ```
+
 
 
 ```{r Initial Graphs}
 # Graphs Checking out the data
-ggplot(data_full, aes(x = log(generation_k_wh), y = log(tons_of_co2_emissions))) +
+ggplot(data_full, aes(x = log(generation_k_wh), y = log(emissions))) +
   geom_point(aes(color = aggregated_fuel_group)) +
   labs(x = "Generation (KWH)", y = "Tons of CO2 Emissions",
        title = "Power Generated Against CO2 Emissions by Fuel Group (Logged Values)",
@@ -52,11 +122,184 @@ ggplot(data_full, aes(x = log(generation_k_wh), y = log(tons_of_co2_emissions)))
 
 ggplot(data_full, aes(y = aggregated_fuel_group, fill = aggregated_fuel_group)) + 
   geom_bar(stat = "count") +
-  labs(x = "Total", y = "Fuel Group") +
-  theme_bw(base_size = 15) +
+  labs(x = "Total", y = "Fuel Group", 
+       caption = "PET = Petroleum, MSW = Municipal solid waste, GEO = Geothermal, GAS = Natural Gas, COAL = Coal") +
+  theme_bw() +
   theme(legend.position = "none")
+
+  # Note: Gas is ALL natural gas. MSW is Munincipal Solid Waste. PET is petroleum. 
+          # Coal is mostly Bituminous Coal. PET is petroleum, mostly Distillate Fuel Oil
+          # GEO is geothermal
+  # full table explaining fuel codes here:
+    # https://www.eia.gov/electricity/annual/html/epa_a_03.html
+
+```
+
+# Tuning and Training
+
+### Split into Training and Testing Data
+```{r training / testing split}
+# Set seed before splitting
+set.seed(231240)
+
+# Initial 80/20 split for the training/testing data
+data_split = data_full %>% initial_split(prop = 0.8)
+
+  # Create training data
+train_df = data_split %>% training()
+
+  # Create testing data
+test_df = data_split %>% testing()
+
+```
+
+### Create and Tune 4 models on Training data
+```{r Creating and Tuning my models}
+# ------------------------------ Set up --------------------------------
+# Creating Recipe used for multiple models below
+train_recipe = train_df %>% recipe(emissions ~ .) %>%
+          
+                      # update role
+                      update_role(plant_code, new_role = "id variable") %>%
+  
+                      step_dummy(all_nominal()) %>%
+
+  
+                      # Mean imputation for numeric predictors
+                      step_meanimpute(all_predictors() & all_numeric()) %>% 
+  
+                      # normalize
+                      step_normalize(all_predictors() & all_numeric()) %>%
+                      
+                      # Remove low-variance
+                      step_nzv(all_predictors() & all_numeric()) %>%
+  
+                      # Remove highly correlated
+                      step_corr(all_predictors() & all_numeric()) %>%
+  
+                      # Remove linearly dependent predictors
+                      step_lincomb(all_predictors() & all_numeric()) 
+                            
+
+
+
+
+
+
+
+                      
+  
+                      # Log the energy generation variable
+                      #step_log(generation_k_wh)
+  
+                      # Make interaction variables
+
+  # Meaning of interactions: 
+   # sector_group*fuel_code - relationship b/w consumers and types of fuel burnt for energy
+   # state_code*cooling_days, state_code*heating_days - how different areas of the country
+   # demand energy at different levels depending on temperature
+  
+
+  
+train_recipe %>% prep() %>% juice()
+
+
+# setting new seed for CV folds
+set.seed(1387219452)
+  # Create Cross Validcation folds
+train_cv = train_df %>% vfold_cv(v = 5)
 
 
 ```
+
+```{r Models}
+
+# --------------------- Basic linear regression ----------------------
+
+# Fitting the linear regression model to training data
+reg_model = 
+  linear_reg() %>%
+  set_engine("lm")
+
+# Create workflow
+workflow_reg = workflow() %>%
+  add_model(reg_model) %>%
+  add_recipe(train_recipe)
+
+# Train model on validation sets, set metric to root mean square error
+cv_reg = workflow_reg %>% 
+  fit_resamples(train_cv, metrics = metric_set(rmse))
+
+
+
+# ------------------------ Elasticnet --------------------------------
+
+# DEFINE ELASTICNET MODEL
+en_model = linear_reg(penalty = tune(), mixture = tune()) %>% 
+            set_engine("glmnet")
+
+  # Define workflow
+workflow_en = workflow() %>%
+  add_model(en_model) %>%
+  add_recipe(train_recipe) 
+
+  # Define Penalties
+lambdas = 10^seq(from = 5, to = -2, length = 1e2)
+alphas = seq(from = 0, to = 1, by = 0.1)
+
+  # Cross Validation Tuning with range of penalites and mixtures
+cv_en = workflow_en %>%
+  tune_grid(
+    train_cv,
+    grid = expand_grid(mixture = alphas, penalty = lambdas),
+    metrics = metric_set(rmse)
+  )
+
+  # Finalize workflow for final model
+final_en = workflow_en %>%
+  finalize_workflow(select_best(cv_en, 'rmse'))
+
+# Wants penalty = 0.01, mixture = 0.3
+
+
+
+# ------------------------------ Random Forest --------------------------------
+
+
+# One more (Logistic Regression?)
+
+```
+
+### Estimate CV Error
+```{r}
+#  Estimate your error (with an appropriately chosen metric) using cross validation
+
+# Linear Regression Root Mean Square Error
+cv_reg %>% collect_metrics()
+
+
+
+
+
+
+# Good place to Create figures!!!!
+```
+
+# Prediction
+
+### Test on test data
+```{r, include = F}
+# -------------------- Predicting with Linear Regression ------------------
+
+
+
+```
+
+### Turn in: 
+  1. Link to this github page with (commented) analysis code and figures
+  2. 1-page "executive summary"
+  3. 4-slide summary following paragraphs 2–5 of the executive summary
+  4. Evaluation of your group member's contribution (doesn't apply)
+
 
 
