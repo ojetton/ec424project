@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(pacman)
 
 p_load(readr, dplyr, ggplot2, readxl, magrittr, janitor, utils, tidyverse, tidymodels,
-       tune, glmnet, recipes)
+       tune, glmnet, recipes, rpart, xgboost)
 ```
 
 ``` r
@@ -61,7 +61,7 @@ heat_cool_df %<>% clean_names() %>%
     # select relevant variables
   select(state_code, year_month, cdd, hdd) %>%
   
-    # make year variable from year_month variable
+    # make year variable from year_month variable, cutting off the month letters
   mutate(year = strtrim(year_month,4)) %>%
     
     # grouping by months, and taking the sum to get the total number
@@ -107,7 +107,9 @@ ggplot(data_full, aes(x = log(generation_k_wh), y = log(emissions))) +
   geom_point(aes(color = aggregated_fuel_group)) +
   labs(x = "Generation (KWH)", y = "Tons of CO2 Emissions",
        title = "Power Generated Against CO2 Emissions by Fuel Group (Logged Values)",
-      color = "Fuel Group")
+      color = "Fuel Group",
+      caption = "PET = Petroleum, MSW = Municipal solid waste, GEO = Geothermal, GAS = Natural Gas, COAL = Coal") +
+  theme_light()
 ```
 
 ![](project_markdown_files/figure-gfm/Initial%20Graphs-1.png)<!-- -->
@@ -115,9 +117,8 @@ ggplot(data_full, aes(x = log(generation_k_wh), y = log(emissions))) +
 ``` r
 ggplot(data_full, aes(y = aggregated_fuel_group, fill = aggregated_fuel_group)) + 
   geom_bar(stat = "count") +
-  labs(x = "Total", y = "Fuel Group", 
-       caption = "PET = Petroleum, MSW = Municipal solid waste, GEO = Geothermal, GAS = Natural Gas, COAL = Coal") +
-  theme_bw() +
+  labs(x = "Total", y = "Fuel Group") +
+  theme_light() +
   theme(legend.position = "none")
 ```
 
@@ -159,9 +160,9 @@ train_recipe = train_df %>% recipe(emissions ~ .) %>%
                       # update role
                       update_role(plant_code, new_role = "id variable") %>%
   
+                      # Add dummy variables for all nominal variables
                       step_dummy(all_nominal()) %>%
 
-  
                       # Mean imputation for numeric predictors
                       step_meanimpute(all_predictors() & all_numeric()) %>% 
   
@@ -176,57 +177,16 @@ train_recipe = train_df %>% recipe(emissions ~ .) %>%
   
                       # Remove linearly dependent predictors
                       step_lincomb(all_predictors() & all_numeric()) 
-                            
 
-                      
-  
-                      # Log the energy generation variable
-                      #step_log(generation_k_wh)
-  
-                      # Make interaction variables
 
-  # Meaning of interactions: 
-   # sector_group*fuel_code - relationship b/w consumers and types of fuel burnt for energy
-   # state_code*cooling_days, state_code*heating_days - how different areas of the country
-   # demand energy at different levels depending on temperature
-  
-
-  
-train_recipe %>% prep() %>% juice()
-```
-
-    ## # A tibble: 16,278 x 35
-    ##     year plant_code useful_thermal_~ fuel_consumptio~ quantity_of_fue~
-    ##    <dbl>      <dbl>            <dbl>            <dbl>            <dbl>
-    ##  1 -1.33       7482           -0.197           -0.311           -0.323
-    ##  2 -1.33       6338           -0.197           -0.311           -0.323
-    ##  3 -1.33       7169           -0.197           -0.313           -0.324
-    ##  4 -1.33      54305           -0.186           -0.308           -0.322
-    ##  5 -1.33       6323           -0.197           -0.312           -0.324
-    ##  6 -1.33        421           -0.197           -0.313           -0.324
-    ##  7 -1.33       6341           -0.197           -0.312           -0.324
-    ##  8 -1.33       6314           -0.197           -0.311           -0.323
-    ##  9 -1.33       7174           -0.195           -0.311           -0.323
-    ## 10 -1.33       6566           -0.197           -0.286           -0.315
-    ## # ... with 16,268 more rows, and 30 more variables: cooling_days <dbl>,
-    ## #   heating_days <dbl>, emissions <dbl>, state_CA <dbl>, state_NY <dbl>,
-    ## #   state_TX <dbl>, sector_group_ELECTRIC.POWER <dbl>, sector_code_X2 <dbl>,
-    ## #   sector_code_X3 <dbl>, sector_code_X5 <dbl>, sector_code_X7 <dbl>,
-    ## #   prime_mover_CA <dbl>, prime_mover_CT <dbl>, prime_mover_GT <dbl>,
-    ## #   prime_mover_IC <dbl>, prime_mover_ST <dbl>, fuel_code_DFO <dbl>,
-    ## #   aggregated_fuel_group_GAS <dbl>, balancing_authority_code_CISO <dbl>,
-    ## #   balancing_authority_code_ISNE <dbl>, balancing_authority_code_MISO <dbl>,
-    ## #   balancing_authority_code_PJM <dbl>, balancing_authority_code_SWPP <dbl>,
-    ## #   state_code_X102 <dbl>, state_code_X103 <dbl>, state_code_X104 <dbl>,
-    ## #   state_code_X105 <dbl>, state_code_X107 <dbl>, state_code_X108 <dbl>,
-    ## #   state_code_X109 <dbl>
-
-``` r
 # setting new seed for CV folds
 set.seed(1387219452)
+
   # Create Cross Validcation folds
 train_cv = train_df %>% vfold_cv(v = 5)
 ```
+
+#### Linear Regression Model
 
 ``` r
 # --------------------- Basic linear regression ----------------------
@@ -271,6 +231,15 @@ cv_reg = workflow_reg %>%
     ##     data_frame
 
 ``` r
+# Finalize workflow to get our regression model!
+final_reg = workflow_reg %>%
+  finalize_workflow(select_best(cv_reg, 'rmse'))  %>%
+  fit(data = train_df)
+```
+
+#### Elasticnet Model
+
+``` r
 # ------------------------ Elasticnet --------------------------------
 
 # DEFINE ELASTICNET MODEL
@@ -294,20 +263,90 @@ cv_en = workflow_en %>%
     metrics = metric_set(rmse)
   )
 
-
-
   # Finalize workflow for final model
 final_en = workflow_en %>%
-  finalize_workflow(select_best(cv_en, 'rmse'))
+  finalize_workflow(select_best(cv_en, 'rmse'))  %>%
+  fit(data = train_df)
 
 # Wants penalty = 0.01, mixture = 0.3
+```
+
+#### Decision Tree Model
+
+``` r
+# ---------------------------- Decision Tree ------------------------------
+
+# Creating regression tree
+tree_model = decision_tree(
+  mode = "regression",
+  cost_complexity = tune(),
+  tree_depth = tune(),
+  min_n = 5
+) %>% set_engine("rpart")
+
+# Define workflow
+workflow_tree = workflow() %>%
+  add_model(tree_model) %>%
+  add_recipe(train_recipe)
+
+# Tune with metrics root mean square error and r-squared
+tree_cv_fit = workflow_tree %>%
+  tune_grid(
+    train_cv,
+    grid = expand_grid(
+      cost_complexity = seq(0, 10, by = 0.5),
+      tree_depth = seq(1, 10, by = 1)
+    ),
+    metrics = metric_set(rmse)
+  )
+
+# finalize workflow for plotting and predicting
+best_flow = workflow_tree %>%
+  finalize_workflow(select_best(tree_cv_fit, 
+                                metric =  "rmse")) %>%
+  fit(data = train_df)
+
+# Extract fitted model
+
+best_tree = best_flow %>% pull_workflow_fit()
+```
+
+#### Boosted Ensemble model
+
+``` r
+# ------------------------------ Boosting --------------------------------
+
+# Creating the model - regression tree boosted emsemble model
+boost_model = boost_tree(
+  mtry = NULL,
+  trees = 100,
+  min_n = NULL,
+  tree_depth = tune(),
+  learn_rate = tune()
+  ) %>% 
+  set_engine("xgboost") %>%
+  set_mode("regression")
 
 
+# define workflow
+workflow_boost = workflow() %>%
+  add_model(boost_model) %>%
+  add_recipe(train_recipe)
 
-# ------------------------------ Random Forest --------------------------------
+# Run the model
+cv_boost = workflow_boost %>%
+  tune_grid(
+    train_cv,
+    grid = grid_regular(tree_depth(),
+                        learn_rate(),
+                        levels = 5:5),
+    metrics = metric_set(rmse)
+    )
 
-
-# One more (Logistic Regression?)
+# Finalize workflow and fit to training data
+final_boost = workflow_boost %>%
+  finalize_workflow(select_best(cv_boost, "rmse")) %>% 
+  fit(data = train_df)
 ```
 
 ### Estimate CV Error
@@ -316,21 +355,104 @@ final_en = workflow_en %>%
 #  Estimate your error (with an appropriately chosen metric) using cross validation
 
 # Linear Regression Root Mean Square Error
-cv_reg %>% collect_metrics()
+    # Averaging the CV RMSE errors from tuning
+reg_error = sum(cv_reg[[3]][[1]]$.estimate + cv_reg[[3]][[2]]$.estimate +
+                   cv_reg[[3]][[3]]$.estimate + cv_reg[[3]][[4]]$.estimate +
+                   cv_reg[[3]][[5]]$.estimate)/5
+
+
+# Elasticnet Root Mean Square Error
+    # values extracted manually through cv_en dataset estimates where
+    # penalty = 0.01, and mixture = 0.3
+elas_error = sum(124365.9 + 123989.3 + 119269.7 + 67415.22 + 123227.2)/5
+
+
+# Decision Tree Root Mean Square Error
+    # values extracted from tree_cv_fit dataset with corre
+tree_error = sum(1.303645e+05 + 8.239833e+04 + 5.612436e+04 + 9.301760e+04 +
+                   1.359426e+05)/5
+
+
+# Boosted Model Root Mean Square Error
+    # values extracted manually from the cv_boost dataset with correct tree
+    # depth (8) and complexity (0.1) that the final boosted model has
+boost_error = sum(86721.87 + 41914.81 + 40989.52 + 46046.91 + 42405.41)/5
+
+
+
+# Comparing Cross Validation Errors
+cv_error_df = data.frame(Model = c("Linear Regression", "Elasticnet",
+                                   "Decision Tree", "Boosted"),
+                         CV_Error = c(reg_error, elas_error, tree_error,
+                                      boost_error))
+
+ggplot(cv_error_df, aes(x = Model, y = log(CV_Error))) +
+  geom_point() +
+  labs(x = "Model", y = "Logged CV RMSE",
+       title = "Estimated Cross Validation Error By Model") +
+  theme_light()
 ```
 
-    ## # A tibble: 1 x 6
-    ##   .metric .estimator    mean     n std_err .config             
-    ##   <chr>   <chr>        <dbl> <int>   <dbl> <fct>               
-    ## 1 rmse    standard   111122.     5  11556. Preprocessor1_Model1
-
-``` r
-# Good place to Create figures!!!!
-```
+![](project_markdown_files/figure-gfm/unnamed-chunk-1-1.png)<!-- -->
 
 # Prediction
 
 ### Test on test data
+
+``` r
+# Predicting with Linear Regression
+reg_pred = final_reg %>% predict(new_data = test_df)
+
+# Predicting with Elasticnet
+en_pred = final_en %>% predict(new_data = test_df)
+
+# Predicting with Decision Tree
+tree_pred = best_flow %>% predict(new_data = test_df)
+
+# Predicting with Boosted Model - WORKED
+boost_pred = final_boost %>% predict(new_data = test_df)
+
+
+# Gathering the RMSE's of the predictions into a dataframe. '
+    # "rmse" function from Metrics package, but not until now b/c of conflict with
+    # yardstick package
+p_load(Metrics)
+
+predict_rmse_df = data.frame(
+  Model = c("Linear Regression", "Elasticnet", "Decision Tree", "Boosted"),
+  RMSE = c(rmse(test_df$emissions, reg_pred$.pred),
+           rmse(test_df$emissions, en_pred$.pred),
+           rmse(test_df$emissions, tree_pred$.pred),
+           rmse(test_df$emissions, boost_pred$.pred))
+  )
+
+
+# Plotting the RMSE of the predictions
+ggplot(predict_rmse_df, aes(x = Model, y = log(RMSE))) +
+  geom_point(shape = 2) +
+  labs(x = "Model", y = "Logged RMSE",
+       title = "Out of Sample Error By Model") +
+  theme_light()
+```
+
+![](project_markdown_files/figure-gfm/Prediction-1.png)<!-- -->
+
+``` r
+# Putting the RMSE datasets together to compare
+compare_df = merge(cv_error_df, predict_rmse_df, by = "Model")
+
+
+# Graphing a comparison
+ggplot(compare_df, aes(x = Model)) +
+  geom_point(aes(y = log(RMSE))) +
+  geom_point(aes(y = log(CV_Error)), shape = 2) +
+  labs(x = "Model", y = "Logged RMSE",
+       title = "Comparing Estimated vs Real Error By Model",
+       caption = "circle - Real, triangle - Estimated") +
+  theme_light()
+```
+
+![](project_markdown_files/figure-gfm/Prediction-2.png)<!-- -->
 
 ### Turn in:
 
