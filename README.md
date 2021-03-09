@@ -5,8 +5,7 @@
 ## [Presentation](https://raw.githack.com/ojetton/ec424project/master/prediction_presentation.html#1)
 
 
-## Executive Summary
+## [Executive Summary](https://github.com/ojetton/ec424project/blob/master/Executive%20Summary.pdf)
 
-link to pdf of executive summary
 
 ## [R code](https://github.com/ojetton/ec424project/blob/master/project_markdown.md)
