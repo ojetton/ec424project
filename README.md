@@ -2,9 +2,7 @@
 #### By Owen Jetton
 #### March, 2021
 
-## Presentation
-
-link to slideshow presentation
+## [Presentation](https://raw.githack.com/ojetton/ec424project/master/prediction_presentation.html#1)
 
 
 ## Executive Summary
