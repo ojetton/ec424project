@@ -21,8 +21,8 @@ knitr::include_graphics("C:/Users/ojett/Documents/EC424/ec424project/project_mar
 ```
 
  <font size="4"> 
- **- Question:** How much carbon dioxide will a power plant emit?  
- **- Relevance:** limiting CO2 to combat climate change.  
+ **- Question:** How much carbon dioxide will a power plant emit in a year?  
+ **- Relevance:** limiting atmospheric CO2 emissions to combat climate change.  
  **- This is a prediction problem** because it concerns estimating CO2 emissions from a power plant as opposed to the relation between CO2 emissions and other variables.
 
 </font>
@@ -33,10 +33,11 @@ knitr::include_graphics("C:/Users/ojett/Documents/EC424/ec424project/project_mar
 knitr::include_graphics("C:/Users/ojett/Documents/EC424/ec424project/project_markdown_files/figure-gfm/Initial_Graphs-2.png")
 ```
  <font size="3"> 
- **-** Annual data from 2016 to 2019.
- **-** Sources: *U.S. Energy Information Agency* and  *National Climatic Data Center*.  
- **-** Shortcomings: annual CO2 emission data, heating and cooling days generalized by state region.  
- **-** Data cleaning involved binding multiple dataframes together and renaming variables with long names such as "fuel_consumption_for_useful_thermal_output_mmbtu"
+ **- Annual data** from 2016 to 2019.
+ **- Sources:** *U.S. Energy Information Agency* and  *National Centers for Environmental Information*.  
+ **- Example variables:** kilowatt hour generation, Residential Energy Demand Temperature Index (REDTI), aggregated fuel group, and quantity of fuel consumed.  
+ **- Shortcomings:** annual emission timeframe, missing REDTI data for Hawaii and Alaska, and energy demand generalized by state.  
+ **- Data cleaning** involved binding multiple dataframes together and renaming variables with long names such as "fuel_consumption_for_useful_thermal_output_mmbtu"
 
 </font>
 
@@ -45,7 +46,7 @@ knitr::include_graphics("C:/Users/ojett/Documents/EC424/ec424project/project_mar
 
 <font size="3">  
 
-**Preparation:** used a tidymodels recipe that created dummy variables for all nomial predictors, computed mean imputation for all numerical predictors, removed all low-variance, highly correlated, and linearly depended variables, and normalized all predictors.
+**Preparation:** used a tidymodels recipe that created dummy variables for all nominal predictors, computed mean imputation for all numerical predictors, removed all low-variance, highly correlated, and linearly depended variables, and normalized all predictors.
 
 </font>
 
@@ -67,8 +68,8 @@ knitr::include_graphics("C:/Users/ojett/Documents/EC424/ec424project/project_mar
   
 **Tuned Parameters**  
  **-** Elasticnet Regression: *Penalty = 0.01, Mixture = 0.3*  
- **-** Decision Tree: *Cost complexity = 0, tree depth = 10*  
- **-** Boosted Ensemble: *Learning rate = 0.1, tree depth = 11*
+ **-** Decision Tree: *Cost Complexity = 0, Tree Depth = 10*  
+ **-** Boosted Ensemble: *Learning Rate = 0.1, Tree Depth = 11*
  
 
  
@@ -78,11 +79,11 @@ knitr::include_graphics("C:/Users/ojett/Documents/EC424/ec424project/project_mar
 knitr::include_graphics("C:/Users/ojett/Documents/EC424/ec424project/project_markdown_files/figure-gfm/Prediction-2.png")
 ```
 
- **-** The boosted model performed the best on CV and test data. 
+ **-** The boosted model performed the best on CV and test data! 
  
- **-** The decision tree was likely overfit to the training data.  
+ **-** The decision tree's dramatic drop in performance is likely due to it being overfit to the training data.  
  
- **-** The elasticnet and regression models had similar errors on CV and test data.  
+ **-** The elasticnet and regression models had similar errors on CV and test data; suggesting possibly similar models.  
 
 
 ## Sources  

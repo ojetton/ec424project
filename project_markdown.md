@@ -241,7 +241,37 @@ final_en = workflow_en %>%
   fit(data = train_df)
 
 # Wants penalty = 0.01, mixture = 0.3
+
+
+# Graphing the performance of the models
+ggplot() +
+  geom_line(data = cv_en[[3]][[1]], 
+            aes(x = mixture, y = log(.estimate), color = log(penalty))) +
+    geom_point(data = cv_en[[3]][[1]] %>% filter(.config == "Preprocessor1_Model0301"), 
+             aes(x = mixture, y = log(.estimate))) +
+  geom_line(data = cv_en[[3]][[2]], 
+            aes(x = mixture, y = log(.estimate), color = log(penalty))) +
+    geom_point(data = cv_en[[3]][[2]] %>% filter(.config == "Preprocessor1_Model0301"), 
+             aes(x = mixture, y = log(.estimate))) +
+  geom_line(data = cv_en[[3]][[3]], 
+            aes(x = mixture, y = log(.estimate), color = log(penalty))) +
+    geom_point(data = cv_en[[3]][[3]] %>% filter(.config == "Preprocessor1_Model0301"), 
+             aes(x = mixture, y = log(.estimate))) +
+  geom_line(data = cv_en[[3]][[4]], 
+            aes(x = mixture, y = log(.estimate), color = log(penalty))) +
+    geom_point(data = cv_en[[3]][[4]] %>% filter(.config == "Preprocessor1_Model0301"), 
+             aes(x = mixture, y = log(.estimate))) +
+  geom_line(data = cv_en[[3]][[5]], 
+            aes(x = mixture, y = log(.estimate), color = log(penalty))) +
+      geom_point(data = cv_en[[3]][[5]] %>% filter(.config == "Preprocessor1_Model0301"), 
+             aes(x = mixture, y = log(.estimate))) +
+  labs(title = "Performance of Elasticnet Models on CV Folds",
+       x = "Mixture", y = "Logged RMSE",
+       color = "Logged Penalty", 
+       caption = "Dots represent best model, where Mixture = 0.3, Penalty = 0.01")
 ```
+
+![](project_markdown_files/figure-gfm/Elasticnet%20model-1.png)<!-- -->
 
 #### Decision Tree Model
 
@@ -281,7 +311,42 @@ best_flow = workflow_tree %>%
 # Extract fitted model
 
 best_tree = best_flow %>% pull_workflow_fit()
+
+
+# Graphing Performances of the models on CV folds
+ggplot() +
+  geom_line(data = tree_cv_fit[[3]][[1]], 
+            aes(x = tree_depth, y = log(.estimate), color = cost_complexity)) +
+    geom_point(data = tree_cv_fit[[3]][[1]] %>% 
+                 filter(.config == "Preprocessor1_Model010"), 
+             aes(x = tree_depth, y = log(.estimate))) +
+ geom_line(data = tree_cv_fit[[3]][[2]], 
+            aes(x = tree_depth, y = log(.estimate), color = cost_complexity)) +
+    geom_point(data = tree_cv_fit[[3]][[2]] %>% 
+                 filter(.config == "Preprocessor1_Model010"), 
+             aes(x = tree_depth, y = log(.estimate))) +
+ geom_line(data = tree_cv_fit[[3]][[3]], 
+            aes(x = tree_depth, y = log(.estimate), color = cost_complexity)) +
+    geom_point(data = tree_cv_fit[[3]][[3]] %>% 
+                 filter(.config == "Preprocessor1_Model010"), 
+             aes(x = tree_depth, y = log(.estimate))) +
+ geom_line(data = tree_cv_fit[[3]][[4]], 
+            aes(x = tree_depth, y = log(.estimate), color = cost_complexity)) +
+    geom_point(data = tree_cv_fit[[3]][[4]] %>% 
+                 filter(.config == "Preprocessor1_Model010"), 
+             aes(x = tree_depth, y = log(.estimate))) +
+ geom_line(data = tree_cv_fit[[3]][[5]], 
+            aes(x = tree_depth, y = log(.estimate), color = cost_complexity)) +
+    geom_point(data = tree_cv_fit[[3]][[5]] %>% 
+                 filter(.config == "Preprocessor1_Model010"), 
+             aes(x = tree_depth, y = log(.estimate))) +
+  labs(title = "Performance of Decision Tree Models on CV Folds",
+       x = "Tree Depth", y = "Logged RMSE",
+       color = "Cost Complexity", 
+       caption = "Dots represent best model, where Cost Complexity = 0, Tree Depth = 10")
 ```
+
+![](project_markdown_files/figure-gfm/decision%20tree%20model-1.png)<!-- -->
 
 #### Boosted Ensemble model
 
@@ -320,7 +385,49 @@ cv_boost = workflow_boost %>%
 final_boost = workflow_boost %>%
   finalize_workflow(select_best(cv_boost, "rmse")) %>% 
   fit(data = train_df)
+
+# Likes Learn Rate 0.1, Tree Depth of 11
+
+# Graphing Boosted Models' performance
+ggplot() +
+  # first fold
+  geom_line(data = cv_boost[[3]][[1]], 
+            aes(x = tree_depth, y = log(.estimate), color = learn_rate)) +
+    geom_point(data = cv_boost[[3]][[1]] %>% 
+                 filter(.config == "Preprocessor1_Model24"), 
+             aes(x = tree_depth, y = log(.estimate))) +
+  # second fold
+  geom_line(data = cv_boost[[3]][[2]], 
+            aes(x = tree_depth, y = log(.estimate), color = learn_rate)) +
+    geom_point(data = cv_boost[[3]][[2]] %>% 
+                 filter(.config == "Preprocessor1_Model24"), 
+             aes(x = tree_depth, y = log(.estimate))) +
+  # third fold
+  geom_line(data = cv_boost[[3]][[3]], 
+            aes(x = tree_depth, y = log(.estimate), color = learn_rate)) +
+    geom_point(data = cv_boost[[3]][[3]] %>% 
+                 filter(.config == "Preprocessor1_Model24"), 
+             aes(x = tree_depth, y = log(.estimate))) +
+  # fourth fold
+  geom_line(data = cv_boost[[3]][[4]], 
+            aes(x = tree_depth, y = log(.estimate), color = learn_rate)) +
+    geom_point(data = cv_boost[[3]][[4]] %>% 
+                 filter(.config == "Preprocessor1_Model24"), 
+             aes(x = tree_depth, y = log(.estimate))) +
+  # fifth fold
+  geom_line(data = cv_boost[[3]][[5]], 
+            aes(x = tree_depth, y = log(.estimate), color = learn_rate)) +
+    geom_point(data = cv_boost[[3]][[5]] %>% 
+                 filter(.config == "Preprocessor1_Model24"), 
+             aes(x = tree_depth, y = log(.estimate))) +
+  # Adding labels
+  labs(title = "Performance of Boosted Ensemble Models on CV Folds",
+       x = "Tree Depth", y = "Logged RMSE",
+       color = "Learn Rate", 
+       caption = "Dots represent best model, where Learn Rate = 0.1, Tree Depth = 11")
 ```
+
+![](project_markdown_files/figure-gfm/Boosted%20model-1.png)<!-- -->
 
 ### Estimate CV Error
 
@@ -421,7 +528,7 @@ compare_df %<>% mutate(Type = c("CV Error", "CV Error", "CV Error", "CV Error",
 
 
 # Graphing a comparison
-ggplot(compare_df, aes(x = Model, y = log(Error), shape = Type)) +
+ggplot(compare_df, aes(x = Model, y = log(Error), shape = Type, color = Type)) +
   geom_point() +
   labs(x = "Model", y = "Logged RMSE",
        title = "Comparing Estimated vs Real Error By Model") +
