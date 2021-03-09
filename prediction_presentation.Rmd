@@ -11,9 +11,7 @@ output: ioslides_presentation
 knitr::opts_chunk$set(echo = FALSE)
 ```
 
-<style>
-.forceBreak { -webkit-column-break-after: always; break-after: column; }
-</style>
+
 
 
 ## The Big Picture 
@@ -45,7 +43,13 @@ knitr::include_graphics("C:/Users/ojett/Documents/EC424/ec424project/project_mar
 
 ## Methods 
 
-  <div class="columns-2">
+<font size="3">  
+
+**Preparation:** used a tidymodels recipe that created dummy variables for all nomial predictors, computed mean imputation for all numerical predictors, removed all low-variance, highly correlated, and linearly depended variables, and normalized all predictors.
+
+</font>
+
+<div class="columns-2">
 
 **Four methods**  
  1. Linear Regression          
@@ -64,7 +68,7 @@ knitr::include_graphics("C:/Users/ojett/Documents/EC424/ec424project/project_mar
 **Tuned Parameters**  
  **-** Elasticnet Regression: *Penalty = 0.01, Mixture = 0.3*  
  **-** Decision Tree: *Cost complexity = 0, tree depth = 10*  
- **-** Boosted Ensemble: *Learning rate = 0.1, tree depth = 8*
+ **-** Boosted Ensemble: *Learning rate = 0.1, tree depth = 11*
  
 
  
@@ -87,7 +91,7 @@ knitr::include_graphics("C:/Users/ojett/Documents/EC424/ec424project/project_mar
     https://www.eia.gov/electricity/data/emissions/   
  * Guide to data  
     https://www.eia.gov/electricity/data/guide/pdf/guide.pdf  
- * Cooling and heating days data  
-    https://www7.ncdc.noaa.gov/CDO/CDODivisionalSelect.jsp#  
+ * Heating days data  
+    https://www.ncdc.noaa.gov/societal-impacts/redti/time-series/USA/dec/year-to-date  
 
-
+**Contact:** ojetton@uoregon.edu

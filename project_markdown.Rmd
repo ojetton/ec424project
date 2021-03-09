@@ -33,9 +33,8 @@ co2_data_2019 = read_xlsx("C:/Users/ojett/Documents/EC424/ec424project/emissions
                      sheet = 1) %>% mutate(year = 2019)
 
 
-# Upload heating and cooling days data
-heat_cool_df = read.delim("https://www.ncei.noaa.gov/pub/orders/CDODiv6010178275591.txt",
-                          sep = ",") 
+# Upload heating days data
+heat_df = read_xlsx("C:/Users/ojett/Documents/EC424/ec424project/state_region_heating_data.xlsx")
 
 
 ```
@@ -44,7 +43,7 @@ heat_cool_df = read.delim("https://www.ncei.noaa.gov/pub/orders/CDODiv6010178275
 
 ```{r Cleaning Data}
 
-# Merging CO2 to get larger data set
+# Binding CO2 to get larger data set
 data_full = do.call("rbind", list(co2_data_2016, co2_data_2017,
                                   co2_data_2018, co2_data_2019))
 
@@ -60,37 +59,9 @@ data_full %<>% clean_names() %>%
             fuel_units, metric_tonnes_of_co2_emissions, plant_name))
 
 
+# Add heating data to main dataframe
 
-# Cleaning the Heating and Cooling days data
-heat_cool_df %<>% clean_names() %>% 
-    # select relevant variables
-  select(state_code, year_month, cdd, hdd) %>%
-  
-    # make year variable from year_month variable, cutting off the month letters
-  mutate(year = strtrim(year_month,4)) %>%
-    
-    # grouping by months, and taking the sum to get the total number
-      # of heating and cooling days in a year
-  group_by(state_code, year) %>%
-  mutate(cooling_days = sum(cdd),
-         heating_days = sum(hdd),
-         state_code = factor(state_code)) %>%
-  
-    # selecting relevant 
-  select(state_code, year, cooling_days, heating_days) %>%
-  distinct()
-
-# Need the state names to correspond with the right regions:
-  # read dataset that has state names for corresponding regions
-  states_region = read_xlsx("C:/Users/ojett/Documents/EC424/ec424project/region_to_state.xlsx")
-  
-  # add state names to respective region in 
-heat_cool_df = merge(heat_cool_df, states_region, by = "state_code")
-
-
-# Add heating and cooling data to main dataframe
-
-data_full = merge(data_full, heat_cool_df, by = c("state", "year"))
+data_full = merge(data_full, heat_df, by = c("state", "year"))
 
 
 # Renaming CO2 emissions variable to "emissions"
@@ -317,6 +288,7 @@ workflow_boost = workflow() %>%
   add_recipe(train_recipe)
 
 # Run the model
+    # I used 5:5 for levels, due to my weak computer. I recommend trying higher.
 cv_boost = workflow_boost %>%
   tune_grid(
     train_cv,
@@ -347,19 +319,20 @@ reg_error = sum(cv_reg[[3]][[1]]$.estimate + cv_reg[[3]][[2]]$.estimate +
 # Elasticnet Root Mean Square Error
     # values extracted manually through cv_en dataset estimates where
     # penalty = 0.01, and mixture = 0.3
-elas_error = sum(124365.9 + 123989.3 + 119269.7 + 67415.22 + 123227.2)/5
+elas_error = sum(124364.5 + 123987.1 + 119266.0 + 67416.86 + 123229.3)/5
 
 
 # Decision Tree Root Mean Square Error
-    # values extracted from tree_cv_fit dataset with corre
-tree_error = sum(1.303645e+05 + 8.239833e+04 + 5.612436e+04 + 9.301760e+04 +
-                   1.359426e+05)/5
+    # values extracted from tree_cv_fit dataset with correct hyperparameters
+    # cost complexity = 0, tree depth = 10
+tree_error = sum(130349.0 + 92505.39 + 55999.62 + 67723.97 +
+                   136221.0)/5
 
 
 # Boosted Model Root Mean Square Error
     # values extracted manually from the cv_boost dataset with correct tree
-    # depth (8) and complexity (0.1) that the final boosted model has
-boost_error = sum(86721.87 + 41914.81 + 40989.52 + 46046.91 + 42405.41)/5
+    # depth (11) and learn rate (0.1) that the final boosted model has
+boost_error = sum(86096.08 + 40215.92 + 38403.37 + 43542.27 + 42643.87)/5
 
 
 
@@ -370,7 +343,7 @@ cv_error_df = data.frame(Model = c("Linear Regression", "Elasticnet",
                                       boost_error))
 
 ggplot(cv_error_df, aes(x = Model, y = log(Error))) +
-  geom_point(shape = 2) +
+  geom_point() +
   labs(x = "Model", y = "Logged CV RMSE",
        title = "Estimated Cross Validation Error By Model") +
   theme_light()
@@ -410,7 +383,7 @@ predict_rmse_df = data.frame(
 
 # Plotting the RMSE of the predictions
 ggplot(predict_rmse_df, aes(x = Model, y = log(Error))) +
-  geom_point(shape) +
+  geom_point(shape = 17) +
   labs(x = "Model", y = "Logged RMSE",
        title = "Out of Sample Error By Model") +
   theme_light()
@@ -425,7 +398,7 @@ compare_df %<>% mutate(Type = c("CV Error", "CV Error", "CV Error", "CV Error",
 
 
 # Graphing a comparison
-ggplot(compare_df, aes(x = Model, y = Error, shape = Type)) +
+ggplot(compare_df, aes(x = Model, y = log(Error), shape = Type)) +
   geom_point() +
   labs(x = "Model", y = "Logged RMSE",
        title = "Comparing Estimated vs Real Error By Model") +
@@ -446,6 +419,6 @@ ggplot(compare_df, aes(x = Model, y = Error, shape = Type)) +
  * Guide to data
     https://www.eia.gov/electricity/data/guide/pdf/guide.pdf
  * Cooling and heating days data
-    https://www7.ncdc.noaa.gov/CDO/CDODivisionalSelect.jsp#
+   https://www.ncdc.noaa.gov/societal-impacts/redti/time-series/USA/dec/year-to-date
 
 
