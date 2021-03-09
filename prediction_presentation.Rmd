@@ -88,11 +88,10 @@ knitr::include_graphics("C:/Users/ojett/Documents/EC424/ec424project/project_mar
 
 ## Sources  
 
- * Emissions by power plant for CO2, SO2, and NOx (2019)  
-    https://www.eia.gov/electricity/data/emissions/   
- * Guide to data  
-    https://www.eia.gov/electricity/data/guide/pdf/guide.pdf  
- * Heating days data  
-    https://www.ncdc.noaa.gov/societal-impacts/redti/time-series/USA/dec/year-to-date  
+ * [Emissions by power plant for CO2, SO2, and NOx](https://www.eia.gov/electricity/data/emissions/)   
+       
+ * [Guide to data](https://www.eia.gov/electricity/data/guide/pdf/guide.pdf)  
+      
+ * [Energy demand and degree days data](https://www.ncdc.noaa.gov/societal-impacts/redti/time-series/USA/dec/year-to-date)   
 
 **Contact:** ojetton@uoregon.edu

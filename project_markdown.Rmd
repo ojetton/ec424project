@@ -89,14 +89,15 @@ ggplot(data_full, aes(x = log(generation_k_wh), y = log(emissions))) +
   labs(x = "Generation (KWH)", y = "Tons of CO2 Emissions",
        title = "Power Generated Against CO2 Emissions by Fuel Group (Logged Values)",
       color = "Fuel Group",
-      caption = "PET = Petroleum, MSW = Municipal solid waste, GEO = Geothermal, GAS = Natural Gas, COAL = Coal") +
+      caption = "PET = Petroleum, MSW = Municipal solid waste, GEO = Geothermal, GAS = Natural Gas, COAL = Coal \nSource: U.S. Energy Information Agency") +
   theme_light()
 
 
 ggplot(data_full, aes(y = aggregated_fuel_group, fill = aggregated_fuel_group)) + 
   geom_bar(stat = "count") +
   labs(x = "Total", y = "Fuel Group",
-       title = "Frequency of Fuel Groups in the Data") +
+       title = "Frequency of Fuel Groups in the Data",
+       caption = "Source: U.S. Energy Information Agency") +
   theme_light() +
   theme(legend.position = "none")
 
