@@ -23,7 +23,8 @@ knitr::include_graphics("C:/Users/ojett/Documents/EC424/ec424project/project_mar
  <font size="4"> 
  **- Question:** How much carbon dioxide will a power plant emit in a year?  
  **- Relevance:** limiting atmospheric CO2 emissions to combat climate change.  
- **- This is a prediction problem** because it concerns estimating CO2 emissions from a power plant as opposed to the relation between CO2 emissions and other variables.
+ **- This is a prediction problem** because it concerns estimating CO2 emissions from a power plant as opposed to the relation between CO2 emissions and other variables.  
+ **- The outcome variable,** carbon dioxide emitted annually, is measured in tons.
 
 </font>
 
