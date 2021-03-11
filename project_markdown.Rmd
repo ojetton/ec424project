@@ -501,7 +501,7 @@ compare_df %<>% mutate(Type = c("CV Error", "CV Error", "CV Error", "CV Error",
 
 # Graphing a comparison
 ggplot(compare_df, aes(x = Model, y = log(Error), shape = Type, color = Type)) +
-  geom_point() +
+  geom_point(size = 3) +
   labs(x = "Model", y = "Logged RMSE",
        title = "Comparing Estimated vs Real Error By Model") +
   theme_light() +

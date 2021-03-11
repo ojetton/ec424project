@@ -1,11 +1,13 @@
-Predicting CO2 Emissions by Power Plant
-================
-Owen Jetton
-3/10/2021
+---
+title: "Predicting CO2 Emissions by Power Plant"
+author: "Owen Jetton"
+date: "3/10/2021"
+output: html_document
+---
 
 # Data
 
-``` r
+```{r setup}
 knitr::opts_chunk$set(echo = TRUE)
  
 # Download and load packages
@@ -15,7 +17,7 @@ p_load(readr, dplyr, ggplot2, readxl, magrittr, janitor, utils, tidyverse, tidym
        tune, glmnet, recipes, rpart, xgboost)
 ```
 
-``` r
+```{r reading data}
 # Read CO2 data from 2016 - 19
 co2_data_2016 = read_xlsx("C:/Users/ojett/Documents/EC424/ec424project/emissions2016.xlsx",
                      sheet = 1) %>% mutate(year = 2016)
@@ -33,11 +35,14 @@ co2_data_2019 = read_xlsx("C:/Users/ojett/Documents/EC424/ec424project/emissions
 
 # Upload heating days data
 heat_df = read_xlsx("C:/Users/ojett/Documents/EC424/ec424project/state_region_heating_data.xlsx")
+
+
 ```
 
 # Cleaning
 
-``` r
+```{r Cleaning Data}
+
 # Binding CO2 to get larger data set
 data_full = do.call("rbind", list(co2_data_2016, co2_data_2017,
                                   co2_data_2018, co2_data_2019))
@@ -70,9 +75,14 @@ data_full %<>% rename(emissions = tons_of_co2_emissions) %>%
   # Also turn certain numerical variables into factors
   mutate_at(.vars = vars("sector_code", "balancing_authority_code", "state_code"),
             .funs = factor) 
+
+
+
 ```
 
-``` r
+
+
+```{r Initial Graphs}
 # Graphs Checking out the data
 ggplot(data_full, aes(x = log(generation_k_wh), y = log(emissions))) +
   geom_point(aes(color = aggregated_fuel_group)) +
@@ -81,11 +91,8 @@ ggplot(data_full, aes(x = log(generation_k_wh), y = log(emissions))) +
       color = "Fuel Group",
       caption = "PET = Petroleum, MSW = Municipal solid waste, GEO = Geothermal, GAS = Natural Gas, COAL = Coal \nSource: U.S. Energy Information Agency") +
   theme_light()
-```
 
-![](project_markdown_files/figure-gfm/Initial%20Graphs-1.png)<!-- -->
 
-``` r
 ggplot(data_full, aes(y = aggregated_fuel_group, fill = aggregated_fuel_group)) + 
   geom_bar(stat = "count") +
   labs(x = "Total", y = "Fuel Group",
@@ -93,23 +100,19 @@ ggplot(data_full, aes(y = aggregated_fuel_group, fill = aggregated_fuel_group)) 
        caption = "Source: U.S. Energy Information Agency") +
   theme_light() +
   theme(legend.position = "none")
-```
 
-![](project_markdown_files/figure-gfm/Initial%20Graphs-2.png)<!-- -->
-
-``` r
   # Note: Gas is ALL natural gas. MSW is Munincipal Solid Waste. PET is petroleum. 
           # Coal is mostly Bituminous Coal. PET is petroleum, mostly Distillate Fuel Oil
           # GEO is geothermal
   # full table explaining fuel codes here:
     # https://www.eia.gov/electricity/annual/html/epa_a_03.html
+
 ```
 
 # Tuning and Training
 
 ### Split into Training and Testing Data
-
-``` r
+```{r training / testing split}
 # Set seed before splitting
 set.seed(231240)
 
@@ -121,11 +124,11 @@ train_df = data_split %>% training()
 
   # Create testing data
 test_df = data_split %>% testing()
+
 ```
 
 ### Create and Tune 4 models on Training data
-
-``` r
+```{r Creating and Tuning my models}
 # ------------------------------ Set up --------------------------------
 # Creating Recipe used for multiple models below
 train_recipe = train_df %>% recipe(emissions ~ .) %>%
@@ -157,11 +160,14 @@ set.seed(1387219452)
 
   # Create Cross Validcation folds
 train_cv = train_df %>% vfold_cv(v = 5)
+
+
 ```
 
-#### Linear Regression Model
 
-``` r
+#### Linear Regression Model
+```{r Models}
+
 # --------------------- Basic linear regression ----------------------
 
 # Fitting the linear regression model to training data
@@ -177,42 +183,16 @@ workflow_reg = workflow() %>%
 # Train model on validation sets, set metric to root mean square error
 cv_reg = workflow_reg %>% 
   fit_resamples(train_cv, metrics = metric_set(rmse))
-```
 
-    ## 
-    ## Attaching package: 'rlang'
-
-    ## The following objects are masked from 'package:purrr':
-    ## 
-    ##     %@%, as_function, flatten, flatten_chr, flatten_dbl, flatten_int,
-    ##     flatten_lgl, flatten_raw, invoke, list_along, modify, prepend,
-    ##     splice
-
-    ## The following object is masked from 'package:magrittr':
-    ## 
-    ##     set_names
-
-    ## 
-    ## Attaching package: 'vctrs'
-
-    ## The following object is masked from 'package:tibble':
-    ## 
-    ##     data_frame
-
-    ## The following object is masked from 'package:dplyr':
-    ## 
-    ##     data_frame
-
-``` r
 # Finalize workflow to get our regression model!
 final_reg = workflow_reg %>%
   finalize_workflow(select_best(cv_reg, 'rmse'))  %>%
   fit(data = train_df)
+
 ```
 
 #### Elasticnet Model
-
-``` r
+```{r Elasticnet model}
 # ------------------------ Elasticnet --------------------------------
 
 # DEFINE ELASTICNET MODEL
@@ -270,13 +250,12 @@ ggplot() +
        x = "Mixture", y = "Logged RMSE",
        color = "Logged Penalty", 
        caption = "Dots represent best model, where Mixture = 0.3, Penalty = 0.01")
+
+
 ```
 
-![](project_markdown_files/figure-gfm/Elasticnet%20model-1.png)<!-- -->
-
 #### Decision Tree Model
-
-``` r
+```{r decision tree model}
 # ---------------------------- Decision Tree ------------------------------
 
 # Creating regression tree
@@ -345,13 +324,12 @@ ggplot() +
        x = "Tree Depth", y = "Logged RMSE",
        color = "Cost Complexity", 
        caption = "Dots represent best model, where Cost Complexity = 0, Tree Depth = 10")
+
 ```
 
-![](project_markdown_files/figure-gfm/decision%20tree%20model-1.png)<!-- -->
 
 #### Boosted Ensemble model
-
-``` r
+```{r Boosted model}
 # ------------------------------ Boosting --------------------------------
 
 # Creating the model - regression tree boosted emsemble model
@@ -426,13 +404,11 @@ ggplot() +
        x = "Tree Depth", y = "Logged RMSE",
        color = "Learn Rate", 
        caption = "Dots represent best model, where Learn Rate = 0.1, Tree Depth = 11")
+
 ```
 
-![](project_markdown_files/figure-gfm/Boosted%20model-1.png)<!-- -->
-
 ### Estimate CV Error
-
-``` r
+```{r Estimated Error}
 #  Estimate your error (with an appropriately chosen metric) using cross validation
 
 # Linear Regression Root Mean Square Error
@@ -473,15 +449,13 @@ ggplot(cv_error_df, aes(x = Model, y = log(Error))) +
   labs(x = "Model", y = "Logged CV RMSE",
        title = "Estimated Cross Validation Error By Model") +
   theme_light()
-```
 
-![](project_markdown_files/figure-gfm/Estimated%20Error-1.png)<!-- -->
+```
 
 # Prediction
 
 ### Test on test data
-
-``` r
+```{r Prediction}
 # Predicting with Linear Regression
 reg_pred = final_reg %>% predict(new_data = test_df)
 
@@ -515,11 +489,8 @@ ggplot(predict_rmse_df, aes(x = Model, y = log(Error))) +
   labs(x = "Model", y = "Logged RMSE",
        title = "Out of Sample Error By Model") +
   theme_light()
-```
 
-![](project_markdown_files/figure-gfm/Prediction-1.png)<!-- -->
 
-``` r
 # Putting the RMSE datasets together to compare
 compare_df = rbind(cv_error_df, predict_rmse_df)
 
@@ -530,27 +501,26 @@ compare_df %<>% mutate(Type = c("CV Error", "CV Error", "CV Error", "CV Error",
 
 # Graphing a comparison
 ggplot(compare_df, aes(x = Model, y = log(Error), shape = Type, color = Type)) +
-  geom_point(size = 3) +
+  geom_point() +
   labs(x = "Model", y = "Logged RMSE",
        title = "Comparing Estimated vs Real Error By Model") +
   theme_light() +
   theme(legend.position = "bottom", legend.title = element_blank())
+
 ```
 
-![](project_markdown_files/figure-gfm/Prediction-2.png)<!-- -->
-
-### Turn in:
-
-1.  Link to this github page with (commented) analysis code and figures
-2.  1-page “executive summary”
-3.  4-slide summary following paragraphs 2–5 of the executive summary
-4.  Evaluation of your group member’s contribution (doesn’t apply)
+### Turn in: 
+  1. Link to this github page with (commented) analysis code and figures
+  2. 1-page "executive summary"
+  3. 4-slide summary following paragraphs 2–5 of the executive summary
+  4. Evaluation of your group member's contribution (doesn't apply)
 
 ### Sources
+ * Emissions by power plant for CO2, SO2, and NOx (2019)
+    https://www.eia.gov/electricity/data/emissions/ 
+ * Guide to data
+    https://www.eia.gov/electricity/data/guide/pdf/guide.pdf
+ * Cooling and heating days data
+   https://www.ncdc.noaa.gov/societal-impacts/redti/time-series/USA/dec/year-to-date
 
-  - Emissions by power plant for CO2, SO2, and NOx (2019)
-    <https://www.eia.gov/electricity/data/emissions/>
-  - Guide to data
-    <https://www.eia.gov/electricity/data/guide/pdf/guide.pdf>
-  - Cooling and heating days data
-    <https://www.ncdc.noaa.gov/societal-impacts/redti/time-series/USA/dec/year-to-date>
+
